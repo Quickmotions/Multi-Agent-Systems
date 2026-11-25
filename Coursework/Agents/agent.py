@@ -3,15 +3,23 @@ import heapq
 
 class Agent:
 
-    def __init__(self, speed, size, starting_pos):
-        self.movement_speed: float = speed
+    def __init__(self, id, speed, velocity, size, starting_pos):
+        self.id = id
+        self.max_speed: float = speed
         self.destination_node_id: int = 0
-        self.size: int = size
-        self.velocity = 0
-        self.current_speed = 0
+        self.size: float = size
+        self.velocity: float = velocity
+        self.current_speed: float = 0
+        self.break_power: float = 20
         self.route: list[int] = []
-        self.position = starting_pos
+        self.position = starting_pos # last interacted Node
+        self.padding: float = 2
+        self.distance_along_route = 0
+        self.has_reached_destination = False
 
+    def info(self) -> str:
+        return f"{self.id} - pos {self.position} @ {self.distance_along_route}m, travelling at {self.current_speed}m/t"
+    
     def calculate_route(self, current_node_id, nodes):
         # Dijkstra's Algorithm pathfinding
         self.route = []
@@ -32,8 +40,6 @@ class Agent:
                 break
 
             for route in node_by_id[node_id].routes:
-                if route.length < 0:
-                    raise ValueError("Dijkstra requires non-negative route lengths")
                 if route.destination_id not in node_by_id:
                     raise ValueError(f"Unknown node on route: {route.destination_id}")
                 new_distance = distance + route.length
@@ -49,11 +55,76 @@ class Agent:
         while node_id != current_node_id:
             self.route.append(node_id)
             node_id = previous[node_id]
-        self.route.append(current_node_id)
+        # self.route.append(current_node_id)
         self.route.reverse()
 
     def set_destination(self, destination_id, nodes):
         self.destination_node_id = destination_id
         self.calculate_route(self.position, nodes)
+
+    def get_next_action(self) -> int:
+        if len(self.route) < 1:
+            return None
+        return self.route[0]
+
+    def node_reached(self):
+        self.position = self.route[0]
+        self.route.pop(0)
+        self.distance_along_route = 0
+
+    def increase_speed(self):
+            self.current_speed += self.velocity
+            if self.current_speed > self.max_speed:
+                self.current_speed = self.max_speed
+
+    def stop_speed(self):
+        self.current_speed -= self.break_power
+        if self.current_speed < 0:
+            self.current_speed = 0
+
+
+    def move_along_route(self, distance):
+        self.distance_along_route += distance
+
+    def update_movement(self, mas):
+
+        # 1. Check Destination
+        next_node = self.get_next_action()
+        if next_node is None: # Reached destination
+            self.has_reached_destination = True
+            self.stop_speed()
+            return 0
+
+        # 2. Check Route
+        for route in mas.nodes[self.position].routes:
+            if route.destination_id == next_node:
+                current_route = route
+                break
+        else:
+            raise ValueError(f"Vehicle {self.id} cannot find route on node {self.position} based on next route {next_node}")
+        
+        last_node = self.position
+
+        # 3. End of Current Route -> check for space and green light
+        if self.distance_along_route >= current_route.length:
+            # No space
+            if self.size + self.padding > current_route.space_left:
+                self.stop_speed()
+                self.distance_along_route = route.length
+                print(f"Agent {self.id} has no space to join intersection")
+                return 
+            # Red Light
+            traffic_light = mas.get_intersection(next_node).traffic_light
+            if traffic_light and last_node in traffic_light.red_nodes:
+                self.stop_speed()
+                self.distance_along_route = route.length
+                print(f"Agent {self.id} has reached a red light")
+                return 
+
+            self.node_reached()
+
+        # 4. On Route -> check space, accellerate
+        self.increase_speed()
+        self.move_along_route(self.current_speed)
 
     
