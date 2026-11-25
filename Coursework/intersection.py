@@ -4,48 +4,18 @@ class Route:
         self.destination_id: int = dest
         self.origin_id: int = origin
         self.length: int = length
-        self.vehicles: list[int] = []
+        self.vehicles = []
         self.direction: int = direction
         self.space_left = length
 
     def add_vehicle(self, vehicle):
-        self.vehicles.append(self.vehicles)
-        self.space_left -= vehicle.size
+        self.vehicles.append(vehicle)
+        self.space_left -= (vehicle.size + vehicle.padding)
 
     def remove_vehicle(self, vehicle):
         self.vehicles.remove(vehicle)
-        self.space_left += vehicle.size
+        self.space_left += (vehicle.size + vehicle.padding)
 
-class TrafficLight:
-    def __init__(self):
-        # lists include list of the origin nodes (not dest)
-        self.green_nodes = []
-        self.red_nodes = []
-        self.delay = 10
-
-    def set_green(self, routes):
-        self.green_nodes = routes
-
-    def set_red(self, routes):
-        self.red_nodes = routes
-
-    def set_delay(self, time):
-        self.delay = time
-    
-    def change_state(self, tick):
-        if (tick % self.delay == 0):
-            new_red = self.green_nodes
-            self.green_nodes = self.red_nodes
-            self.red_nodes = new_red
-
-class RoundRobinTrafficLight(TrafficLight):
-    def __init__(self):
-        super().__init__()
-
-    def change_state(self):
-        new_green = self.red_nodes[0]
-        self.red_nodes = self.red_nodes.pop(0) + self.green_nodes
-        self.green_nodes = [new_green]
     
 class Intersection:
     def __init__(self, number):
@@ -67,3 +37,33 @@ class Intersection:
 
     def update_traffic_light(self, tick):
         self.traffic_light.change_state(tick)
+
+    def add_vehicle_to_route(self, route_id, vehicle):
+        
+        for route in self.routes:
+            if route.destination_id == route_id:
+                print(f"DEBUG: Added vehicle {vehicle.id} onto Node {self.id} Route {route.id} towards Node {route.destination_id}")
+                route.add_vehicle(vehicle)
+                return
+        else:
+            raise ValueError(f"ADD VEHICLE ERROR: Unable to find route {route_id} on node {self.id} for vehicle {vehicle.id}")
+
+    def remove_vehicle_from_route(self, route_id, vehicle):
+        for route in self.routes:
+            if route.destination_id == route_id:
+                print(f"DEBUG: Removed vehicle {vehicle.id} from Node {self.id} Route {route.id} towards Node {route.destination_id}")
+                route.remove_vehicle(vehicle)
+                return
+        else:
+            raise ValueError(f"REMOVE VEHICLE ERROR: Unable to find route {route_id} on node {self.id} for vehicle {vehicle.id}")
+
+
+    def get_next_space_on_route(self, route_id) -> int:
+        for route in self.routes:
+            if route.destination_id == route_id:
+                if len(route.vehicles) == 0:
+                    return 0
+                vehicle = route.vehicles[-1]
+                return vehicle.distance_along_route + vehicle.size
+        else:
+            raise ValueError(f"GET ROUTE SPACE ERROR: : Unable to find route {route_id} on node {self.id}")

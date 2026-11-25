@@ -1,4 +1,5 @@
-from intersection import Intersection, TrafficLight, RoundRobinTrafficLight
+from intersection import Intersection
+from traffic_light import TrafficLight, RoundRobinTrafficLight
 from visualisation import NetworkVisualiser
 from Agents.car import Car
 from Agents.agent import Agent
@@ -79,7 +80,7 @@ if __name__ == "__main__":
     vehicles: list[Agent] = []
 
     car = Car(id=0, speed=40, velocity=3, size=2, starting_pos=1)
-    car.set_destination(2, mas.nodes)
+    car.set_destination(2, mas)
     # print(car.route)
     vehicles.append(car)
 
